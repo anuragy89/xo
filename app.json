@@ -1,0 +1,94 @@
+{
+  "name": "Tic-Tac-Toe Masters Bot",
+  "description": "Competitive Telegram gaming bot with PvP, leaderboards, broadcasts, and MongoDB on Standard-2x dyno",
+  "keywords": [
+    "telegram",
+    "bot",
+    "game",
+    "tictactoe",
+    "tic-tac-toe",
+    "multiplayer",
+    "mongodb",
+    "python-telegram-bot",
+    "heroku",
+    "competitive",
+    "leaderboard",
+    "standard-2x"
+  ],
+  "repository": "https://github.com/your-username/tictactoe-bot",
+  "success_url": "/",
+  "author": "Your Name",
+  "website": "https://github.com/your-username/tictactoe-bot",
+  "env": {
+    "BOT_TOKEN": {
+      "description": "Telegram bot token from @BotFather (/newbot). Format: 123456789:ABCdefGHIjklmnoPQRstuvWXYZ",
+      "value": "",
+      "required": true
+    },
+    "MONGO_URI": {
+      "description": "MongoDB Atlas connection string. Format: mongodb+srv://username:password@cluster.mongodb.net/database",
+      "value": "",
+      "required": true
+    },
+    "BOT_USERNAME": {
+      "description": "Your Telegram bot username without @ symbol. Example: my_tictactoe_bot",
+      "value": "",
+      "required": true
+    },
+    "OWNER_ID": {
+      "description": "Your Telegram user ID for admin /broadcast command. Get from @userinfobot. Example: 123456789",
+      "value": "",
+      "required": false
+    },
+    "WEBHOOK_URL": {
+      "description": "Your Heroku app URL for webhooks. Example: https://your-app.herokuapp.com",
+      "value": "",
+      "required": true
+    },
+    "USE_WEBHOOK": {
+      "description": "Set to 'true' for production webhook mode, 'false' for polling dev mode",
+      "value": "true",
+      "required": false
+    },
+    "PYTHONUNBUFFERED": {
+      "description": "Python unbuffered output for logging",
+      "value": "1",
+      "required": false
+    },
+    "PYTHONHASHSEED": {
+      "description": "Python hash seed for reproducibility",
+      "value": "random",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "standard-2x"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "addons": [],
+  "stack": "heroku-24",
+  "scripts": {
+    "postdeploy": "echo 'Bot deployed successfully on Standard-2x! Add bot to your group and send /xo to start playing.'"
+  },
+  "environments": {
+    "test": {
+      "scripts": {
+        "test": "echo 'Running tests...'"
+      }
+    }
+  },
+  "regions": [
+    "us",
+    "eu"
+  ],
+  "default-processes": {
+    "web": "python main.py"
+  }
+}
