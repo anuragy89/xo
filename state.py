@@ -21,7 +21,7 @@ def r():
     """Return a Redis client using the shared pool."""
     global _pool
     if _pool is None:
-        kw = {"decode_responses": True, "max_connections": 20}
+        kw = {"decode_responses": True, "max_connections": 8}
         # Heroku Redis uses rediss:// (TLS) with self-signed certs
         if REDIS_URL.startswith("rediss://"):
             kw["ssl_cert_reqs"] = "none"
