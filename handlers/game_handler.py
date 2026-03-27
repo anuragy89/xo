@@ -600,6 +600,10 @@ async def handle_game_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def _handle_move(query, bot: Bot, cid: int, idx: int, user, lang: str, ctx):
     if cid not in games:
+        try:
+            await query.answer("⚠️ Game expired! Start a new one with /xo or /pve", show_alert=True)
+        except TelegramError:
+            pass
         return
     game = games[cid]
     if game["status"] != "playing":
