@@ -10,13 +10,11 @@ from database import (
     save_user, get_user_coins, deduct_coins, add_coins, get_user_lang,
 )
 from i18n import t
+import state
 
 
 def _e(s) -> str:
     return html.escape(str(s))
-
-# Active bets: chat_id → { user_id: amount }
-active_bets: dict = {}
 
 
 # ── /coins ────────────────────────────────────────────────
@@ -66,9 +64,7 @@ async def cmd_bet(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    if chat_id not in active_bets:
-        active_bets[chat_id] = {}
-    active_bets[chat_id][user.id] = amount
+    await state.set_bet(chat_id, user.id, amount)
 
     await update.message.reply_text(
         t("bet_placed", lang, amount=amount),
@@ -78,12 +74,13 @@ async def cmd_bet(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # ── Helpers used by game_handler ──────────────────────────
 
-def get_bet(chat_id: int, user_id: int) -> int:
-    return active_bets.get(chat_id, {}).get(user_id, 0)
+async def get_bet(chat_id: int, user_id: int) -> int:
+    bets = await state.get_bets(chat_id)
+    return bets.get(user_id, 0)
 
 
-def clear_bets(chat_id: int) -> None:
-    active_bets.pop(chat_id, None)
+async def clear_bets(chat_id: int) -> None:
+    await state.clear_bets(chat_id)
 
 
 async def resolve_bets(chat_id: int, winner_id: int, loser_id: int, lang: str = "en") -> str:
@@ -91,7 +88,7 @@ async def resolve_bets(chat_id: int, winner_id: int, loser_id: int, lang: str = 
     Deduct from loser, credit to winner.
     Returns a formatted result string (or empty string if no bet).
     """
-    bets = active_bets.pop(chat_id, {})
+    bets = await state.pop_bets(chat_id)
     if not bets:
         return ""
 

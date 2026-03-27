@@ -8,4 +8,5 @@ dependencies = [
     "pymongo>=4.16.0",
     "python-dotenv>=1.2.2",
     "python-telegram-bot[webhooks]>=22.7",
+    "redis>=7.4.0",
 ]

@@ -49,12 +49,9 @@ from database import (
     update_h2h, STARTING_ELO, COINS_WIN, COINS_DRAW,
 )
 from config import BOT_THINK_DELAY
+import state
 
 logger = logging.getLogger(__name__)
-
-# ── State ──────────────────────────────────────────────────
-inline_games: dict = {}   # iid → game dict
-inline_locks: dict = {}   # iid → asyncio.Lock
 
 
 # ─────────────────────────────────────────────────────────
@@ -68,14 +65,6 @@ def e(s) -> str:
 def strip_md(s: str) -> str:
     """Remove markdown markers so text is safe for HTML mode."""
     return re.sub(r"[*_`\[\]]", "", str(s))
-
-def _get_lock(iid: str) -> asyncio.Lock:
-    if iid not in inline_locks:
-        inline_locks[iid] = asyncio.Lock()
-    return inline_locks[iid]
-
-def _drop_lock(iid: str):
-    inline_locks.pop(iid, None)
 
 async def _lang(uid: int) -> str:
     doc = await get_user(uid)
@@ -262,11 +251,11 @@ async def handle_chosen_inline_result(update: Update, ctx: ContextTypes.DEFAULT_
     await asyncio.sleep(0.5)
 
     if result_id == "pvp_open":
-        inline_games[iid] = {
+        await state.set_inline_game(iid, {
             "mode":    "pvp_lobby",
             "creator": user,
             "status":  "waiting",
-        }
+        })
         await _edit(
             ctx.bot, iid,
             f"🎮 <b>Open XO Game!</b>\n\n"
@@ -281,8 +270,7 @@ async def handle_chosen_inline_result(update: Update, ctx: ContextTypes.DEFAULT_
         char = DEFAULT_CHARACTER
         game = new_pve_game(user.id, user.full_name, diff, char)
         game["iid"] = iid
-        inline_games[iid] = game
-        inline_locks[iid] = asyncio.Lock()
+        await state.set_inline_game(iid, game)
 
         char_data  = CHARACTERS[char]
         char_intro = e(strip_md(char_data["intro"]))
@@ -324,7 +312,7 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
     # ── Join lobby ───────────────────────────────
     if data.startswith("ij:"):
         iid   = data[3:]
-        entry = inline_games.get(iid)
+        entry = await state.get_inline_game(iid)
 
         if not entry:
             await _edit(bot, iid,
@@ -344,8 +332,7 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
         game = new_pvp_game(creator.id, user.id, creator.full_name, user.full_name)
         game["mode"] = "xo"
         game["iid"]  = iid
-        inline_games[iid] = game
-        inline_locks[iid] = asyncio.Lock()
+        await state.set_inline_game(iid, game)
 
         await _edit(
             bot, iid,
@@ -360,14 +347,13 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
     # ── Cancel lobby ─────────────────────────────
     if data.startswith("ix:"):
         iid   = data[3:]
-        entry = inline_games.get(iid)
+        entry = await state.get_inline_game(iid)
         if entry and entry.get("mode") == "pvp_lobby":
             if user.id != entry["creator"].id:
                 try: await query.answer("Only the creator can cancel!", show_alert=True)
                 except TelegramError: pass
                 return
-        inline_games.pop(iid, None)
-        _drop_lock(iid)
+        await state.delete_inline_game(iid)
         await _edit(bot, iid, "❌ Game cancelled.")
         return
 
@@ -376,14 +362,14 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
         parts = data.split(":")
         iid   = parts[1]
         idx   = int(parts[2])
-        async with _get_lock(iid):
+        async with state.inline_lock(iid):
             await _do_move(bot, iid, idx, user)
         return
 
     # ── Rematch ───────────────────────────────────
     if data.startswith("irem:"):
         iid      = data[5:]
-        old_game = inline_games.get(iid)
+        old_game = await state.get_inline_game(iid)
         if not old_game or old_game.get("mode") != "pve":
             try: await query.answer("Rematch only for PvE games.", show_alert=True)
             except TelegramError: pass
@@ -398,8 +384,7 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
         char = old_game.get("character",  DEFAULT_CHARACTER)
         game = new_pve_game(user.id, user.full_name, diff, char)
         game["iid"] = iid
-        inline_games[iid] = game
-        inline_locks[iid] = asyncio.Lock()
+        await state.set_inline_game(iid, game)
 
         char_data  = CHARACTERS.get(char, CHARACTERS[DEFAULT_CHARACTER])
         char_intro = e(strip_md(char_data["intro"]))
@@ -417,7 +402,7 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
     # ── Revenge ───────────────────────────────────
     if data.startswith("ir:"):
         iid      = data[3:]
-        old_game = inline_games.get(iid)
+        old_game = await state.get_inline_game(iid)
         if old_game and user.id != old_game.get("x_player"):
             try: await query.answer("Only the original player can take revenge!", show_alert=True)
             except TelegramError: pass
@@ -426,8 +411,7 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
         await save_user(user)
         game = new_pve_game(user.id, user.full_name, "hard", "devil", revenge=True)
         game["iid"] = iid
-        inline_games[iid] = game
-        inline_locks[iid] = asyncio.Lock()
+        await state.set_inline_game(iid, game)
 
         await _edit(
             bot, iid,
@@ -444,14 +428,13 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
     # ── New open game ─────────────────────────────
     if data.startswith("in:"):
         iid = data[3:]
-        inline_games.pop(iid, None)
-        _drop_lock(iid)
+        await state.delete_inline_game(iid)
         await save_user(user)
-        inline_games[iid] = {
+        await state.set_inline_game(iid, {
             "mode":    "pvp_lobby",
             "creator": user,
             "status":  "waiting",
-        }
+        })
         await _edit(
             bot, iid,
             f"🎮 <b>Open XO Game!</b>\n\n"
@@ -468,7 +451,7 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
 # ─────────────────────────────────────────────────────────
 
 async def _do_move(bot, iid: str, idx: int, user):
-    game = inline_games.get(iid)
+    game = await state.get_inline_game(iid)
     if not game or game.get("status") != "playing":
         return
     if user.id not in game["players"]:
@@ -495,6 +478,7 @@ async def _do_move(bot, iid: str, idx: int, user):
         nxt_id       = game["turn"]
         nxt_name     = e(game["names"][nxt_id])
         nxt_mark     = _tmark(game, nxt_id)
+        await state.set_inline_game(iid, game)
         await _edit(
             bot, iid,
             f"{_header(game)}\n\n"
@@ -506,6 +490,7 @@ async def _do_move(bot, iid: str, idx: int, user):
     else:
         char         = game.get("character", DEFAULT_CHARACTER)
         game["turn"] = "bot"
+        await state.set_inline_game(iid, game)
         think        = e(strip_md(char_thinking(char)))
         await _edit(
             bot, iid,
@@ -528,6 +513,7 @@ async def _do_move(bot, iid: str, idx: int, user):
             return
 
         game["turn"] = user.id
+        await state.set_inline_game(iid, game)
         await _edit(
             bot, iid,
             f"{_header(game)}\n\n"
@@ -548,7 +534,7 @@ async def _end(bot, iid: str, game: dict, winner_val):
     character = game.get("character", DEFAULT_CHARACTER)
 
     game["status"] = "over"
-    _drop_lock(iid)
+    await state.set_inline_game(iid, game)  # keep for rematch
 
     header      = _header(game)
     board_emoji = board_to_emoji(board)

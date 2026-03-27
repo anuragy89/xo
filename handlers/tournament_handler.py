@@ -14,9 +14,7 @@ from database import (
     save_user, get_tournament, create_tournament,
     update_tournament, delete_tournament,
 )
-
-# In-memory: chat_id → active match info
-tourn_games: dict = {}   # { chat_id: { "game": dict, "match": dict } }
+import state
 
 
 def _e(s) -> str:
@@ -238,7 +236,9 @@ async def _start_next_match(bot, chat_id: int, matches: list):
         match["status"] = "active"
         game = new_pvp_game(p1["user_id"], p2["user_id"], p1["name"], p2["name"])
         game["tournament"] = True
-        tourn_games[chat_id] = {"game": game, "match": match}
+        await state.set_tourn_game(chat_id, {"game": game, "match": match})
+        # Also store in main games state so move callbacks work
+        await state.set_game(chat_id, game)
 
         header = (
             f"🏆 <b>Tournament Match!</b>\n"
@@ -255,14 +255,12 @@ async def _start_next_match(bot, chat_id: int, matches: list):
 
 async def record_tournament_result(bot, chat_id: int, winner_id: int, winner_name: str):
     """Called by game_handler after a tournament match finishes."""
-    entry = tourn_games.pop(chat_id, None)
+    entry = await state.get_tourn_game(chat_id)
+    await state.delete_tourn_game(chat_id)
     if not entry:
         return
 
     match               = entry["match"]
-    match["winner_id"]   = winner_id
-    match["winner_name"] = winner_name
-    match["status"]      = "done"
 
     tourn = await get_tournament(chat_id)
     if not tourn:
@@ -270,6 +268,18 @@ async def record_tournament_result(bot, chat_id: int, winner_id: int, winner_nam
 
     bracket   = tourn.get("bracket", [])
     cur_round = bracket[-1]
+
+    # Find and update the matching match in the bracket from MongoDB
+    for m in cur_round:
+        if (m["p1"]["user_id"] == match["p1"]["user_id"]
+                and m["p2"]["user_id"] == match["p2"]["user_id"]):
+            m["winner_id"]   = winner_id
+            m["winner_name"] = winner_name
+            m["status"]      = "done"
+            break
+
+    # Save the updated bracket immediately
+    await update_tournament(chat_id, {"bracket": bracket})
 
     # Check if the whole round is done
     if not all(m["status"] == "done" for m in cur_round):

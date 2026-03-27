@@ -29,3 +29,6 @@ PORT             = int(os.getenv("PORT", "8443"))
 WEBHOOK_URL      = os.getenv("WEBHOOK_URL", "")                     # e.g. https://myapp.herokuapp.com
 USE_WEBHOOK      = bool(WEBHOOK_URL)
 WEBHOOK_SECRET   = os.getenv("WEBHOOK_SECRET", "")                  # X-Telegram-Bot-Api-Secret-Token
+
+# ── Redis ─────────────────────────────────────────────────
+REDIS_URL        = os.getenv("REDIS_URL", "redis://localhost:6379")
