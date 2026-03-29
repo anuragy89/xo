@@ -136,9 +136,9 @@ def difficulty_kb(user_id: int):
 def character_kb(difficulty, user_id: int):
     return InlineKeyboardMarkup([
         [
-            _b("😈 The Devil", f"char:{user_id}:{difficulty}:devil", icon_key="devil"),
-            _b("🤓 The Nerd", f"char:{user_id}:{difficulty}:nerd", icon_key="nerd"),
-            _b("😴 Grandma", f"char:{user_id}:{difficulty}:grandma", icon_key="grandma"),
+            _b("The Devil", f"char:{user_id}:{difficulty}:devil", icon_key="devil"),
+            _b("The Nerd", f"char:{user_id}:{difficulty}:nerd", icon_key="nerd"),
+            _b("Grandma", f"char:{user_id}:{difficulty}:grandma", icon_key="grandma"),
         ],
         [_b("Back", f"pick_diff:{user_id}")],
     ])
