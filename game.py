@@ -4,6 +4,8 @@ game.py – Core XO logic, Minimax AI, bot characters, move analysis.
 
 import random
 
+from emojis import em, get_cell_emoji
+
 EMPTY = 0
 X     = 1    # human  → ❌
 O     = -1   # bot    → ⭕
@@ -14,7 +16,7 @@ WIN_COMBOS = [
     (0, 4, 8), (2, 4, 6),
 ]
 
-CELL_EMOJI = {EMPTY: "⬜", X: "❌", O: "⭕"}
+CELL_EMOJI = get_cell_emoji()
 
 
 # ─────────────────────────────────────────────────────────
@@ -23,77 +25,77 @@ CELL_EMOJI = {EMPTY: "⬜", X: "❌", O: "⭕"}
 
 CHARACTERS = {
     "devil": {
-        "name":  "😈 The Devil",
-        "intro": "😈 <b>The Devil</b> has entered the game.\n<i>\"Your soul is mine.\"</i>",
+        "name":  f"{em('devil')} The Devil",
+        "intro": f"{em('devil')} <b>The Devil</b> has entered the game.\n<i>\"Your soul is mine.\"</i>",
         "win":   [
-            "😈 Did you really think you could beat ME?",
-            "🔥 Burned. Absolutely burned.",
-            "💀 Error 666: Your win not found.",
-            "😈 I've seen better plays from a toddler.",
-            "🔥 Your suffering brings me joy.",
+            f"{em('devil')} Did you really think you could beat ME?",
+            f"{em('fire')} Burned. Absolutely burned.",
+            f"{em('skull')} Error 666: Your win not found.",
+            f"{em('devil')} I've seen better plays from a toddler.",
+            f"{em('fire')} Your suffering brings me joy.",
         ],
         "lose":  [
             "😤 A fluke. JUST a fluke.",
             "😡 This isn't over. I WILL have my revenge.",
-            "🔥 I let you win. Obviously.",
+            f"{em('fire')} I let you win. Obviously.",
         ],
         "draw":  [
-            "😈 I was going easy on you.",
-            "🔥 A temporary mercy. Next time — no.",
+            f"{em('devil')} I was going easy on you.",
+            f"{em('fire')} A temporary mercy. Next time — no.",
         ],
         "think": [
-            "😈 <b>Consulting the dark arts...</b>",
-            "🔥 <b>Summoning forbidden strategies...</b>",
-            "💀 <b>Calculating your demise...</b>",
+            f"{em('devil')} <b>Consulting the dark arts...</b>",
+            f"{em('fire')} <b>Summoning forbidden strategies...</b>",
+            f"{em('skull')} <b>Calculating your demise...</b>",
         ],
     },
     "nerd": {
-        "name":  "🤓 The Nerd",
-        "intro": "🤓 <b>The Nerd</b> is ready.\n<i>\"Statistically, I will win 94.7% of the time.\"</i>",
+        "name":  f"{em('nerd')} The Nerd",
+        "intro": f"{em('nerd')} <b>The Nerd</b> is ready.\n<i>\"Statistically, I will win 94.7% of the time.\"</i>",
         "win":   [
-            "🤓 Precisely as calculated. My model was 97.2% confident.",
-            "📊 Center + corner opening: 68% win rate. Proven.",
-            "🤓 Your move sequence is a known losing pattern. See: Berlekamp 1991.",
-            "💻 Algorithm executed flawlessly. Result: expected.",
+            f"{em('nerd')} Precisely as calculated. My model was 97.2% confident.",
+            f"{em('chart_bar')} Center + corner opening: 68% win rate. Proven.",
+            f"{em('nerd')} Your move sequence is a known losing pattern. See: Berlekamp 1991.",
+            f"{em('laptop')} Algorithm executed flawlessly. Result: expected.",
         ],
         "lose":  [
-            "🤓 Fascinating. I must recalibrate my decision tree.",
-            "📊 My model assigned 2.3% probability to this. Noted.",
-            "💻 Logging anomaly. Initiating post-game analysis...",
+            f"{em('nerd')} Fascinating. I must recalibrate my decision tree.",
+            f"{em('chart_bar')} My model assigned 2.3% probability to this. Noted.",
+            f"{em('laptop')} Logging anomaly. Initiating post-game analysis...",
         ],
         "draw":  [
-            "🤓 A draw. Both players played optimally from move 3.",
-            "📊 Expected outcome when both parties use minimax correctly.",
+            f"{em('nerd')} A draw. Both players played optimally from move 3.",
+            f"{em('chart_bar')} Expected outcome when both parties use minimax correctly.",
         ],
         "think": [
-            "🤓 <b>Cross-referencing 47,293 game databases...</b>",
-            "📊 <b>Running alpha-beta pruning depth 9...</b>",
-            "💻 <b>Evaluating 8 candidate moves...</b>",
+            f"{em('nerd')} <b>Cross-referencing 47,293 game databases...</b>",
+            f"{em('chart_bar')} <b>Running alpha-beta pruning depth 9...</b>",
+            f"{em('laptop')} <b>Evaluating 8 candidate moves...</b>",
         ],
     },
     "grandma": {
-        "name":  "😴 Grandma",
-        "intro": "😴 <b>Grandma</b> wants to play!\n<i>\"She's been practicing since 1987.\"</i>",
+        "name":  f"{em('grandma')} Grandma",
+        "intro": f"{em('grandma')} <b>Grandma</b> wants to play!\n<i>\"She's been practicing since 1987.\"</i>",
         "win":   [
-            "😴 Oh my, I won! Would you like some cookies, dear?",
-            "🍪 Grandma got you! Don't feel bad, sweetie.",
-            "😊 Oh goodness! I haven't won since bingo night!",
-            "🌸 That was so fun! You almost had me on move 4, dear.",
+            f"{em('grandma')} Oh my, I won! Would you like some cookies, dear?",
+            f"{em('cookie')} Grandma got you! Don't feel bad, sweetie.",
+            f"{em('smile')} Oh goodness! I haven't won since bingo night!",
+            f"{em('flower')} That was so fun! You almost had me on move 4, dear.",
         ],
         "lose":  [
-            "😴 Oh well, you're so clever! Just like your grandfather.",
-            "🍪 You won! Here, have a virtual cookie 🍪",
-            "😊 Oh you're too good for old Grandma!",
+            f"{em('grandma')} Oh well, you're so clever! Just like your grandfather.",
+            f"{em('cookie')} You won! Here, have a virtual cookie {em('cookie')}",
+            f"{em('smile')} Oh you're too good for old Grandma!",
         ],
         "draw":  [
-            "😴 A tie! How nice, nobody had to lose.",
-            "🌸 We're perfectly matched, dear.",
+            f"{em('grandma')} A tie! How nice, nobody had to lose.",
+            f"{em('flower')} We're perfectly matched, dear.",
         ],
         "think": [
-            "😴 <b>Hmm... let me think, dear...</b>",
-            "🌸 <b>One moment, adjusting my glasses...</b>",
-            "😴 <b>Now where did I put my strategy...</b>",
-            "🍪 <b>Thinking while the cookies bake...</b>",
+            f"{em('grandma')} <b>Hmm... let me think, dear...</b>",
+            f"{em('flower')} <b>One moment, adjusting my glasses...</b>",
+            f"{em('grandma')} <b>Now where did I put my strategy...</b>",
+            f"{em('cookie')} <b>Thinking while the cookies bake...</b>",
         ],
     },
 }
@@ -244,14 +246,14 @@ def analyse_game(move_history: list) -> str:
 
     if player_mark == X:
         if score < 0:
-            return f"🔍 <b>Analysis:</b> Move {move_num + 1} ({pos}) was a mistake by ❌ — it gave the opponent the advantage."
+            return f"{em('magnify')} <b>Analysis:</b> Move {move_num + 1} ({pos}) was a mistake by {em('x_mark')} — it gave the opponent the advantage."
         else:
-            return f"🔍 <b>Analysis:</b> Move {move_num + 1} ({pos}) was the winning play by ❌ — the game was decided there."
+            return f"{em('magnify')} <b>Analysis:</b> Move {move_num + 1} ({pos}) was the winning play by {em('x_mark')} — the game was decided there."
     else:
         if score > 0:
-            return f"🔍 <b>Analysis:</b> Move {move_num + 1} ({pos}) sealed ⭕'s advantage — the board was lost for ❌ from that point."
+            return f"{em('magnify')} <b>Analysis:</b> Move {move_num + 1} ({pos}) sealed {em('o_mark')}'s advantage — the board was lost for {em('x_mark')} from that point."
         else:
-            return f"🔍 <b>Analysis:</b> Move {move_num + 1} ({pos}) was a mistake by ⭕ — ❌ took control after that."
+            return f"{em('magnify')} <b>Analysis:</b> Move {move_num + 1} ({pos}) was a mistake by {em('o_mark')} — {em('x_mark')} took control after that."
 
 
 # ─────────────────────────────────────────────────────────

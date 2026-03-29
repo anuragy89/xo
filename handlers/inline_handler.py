@@ -40,7 +40,7 @@ from telegram.constants import ParseMode
 from game import (
     new_pvp_game, new_pve_game,
     check_winner, is_draw, bot_move, board_to_emoji,
-    char_thinking, char_result_msg, analyse_game,
+    char_thinking,
     EMPTY, CELL_EMOJI, X, O, CHARACTERS, DEFAULT_CHARACTER,
 )
 from database import (
@@ -48,6 +48,7 @@ from database import (
     update_h2h, STARTING_ELO, COINS_WIN, COINS_DRAW,
 )
 from config import BOT_THINK_DELAY
+from emojis import em, btn_emoji
 import state
 
 logger = logging.getLogger(__name__)
@@ -71,16 +72,22 @@ async def _lang(uid: int) -> str:
 #  KEYBOARDS
 # ─────────────────────────────────────────────────────────
 
-def _b(text, data, style=""):
+def _b(text, data, style="", icon_key=""):
+    kw = {}
     if style:
+        kw["style"] = style
+    icon_id = btn_emoji(icon_key) if icon_key else None
+    if icon_id:
+        kw["icon_custom_emoji_id"] = icon_id
+    if kw:
         return InlineKeyboardButton(
-            text, callback_data=data, api_kwargs={"style": style}
+            text, callback_data=data, api_kwargs=kw
         )
     return InlineKeyboardButton(text, callback_data=data)
 
 def _join_kb(iid):
     return InlineKeyboardMarkup([[
-        _b("⚡ Join Game", f"ij:{iid}", "success"),
+        _b("⚡ Join Game", f"ij:{iid}", "success", "lightning"),
         _b("Cancel",      f"ix:{iid}", "danger"),
     ]])
 
@@ -105,17 +112,17 @@ def _board_kb(board, iid):
 def _end_kb(iid, mode, show_revenge=False):
     if show_revenge:
         return InlineKeyboardMarkup([
-            [_b("🔥 REVENGE  ×2 Coins", f"ir:{iid}",   "danger")],
-            [_b("🔄 Rematch",           f"irem:{iid}", "primary"),
-             _b("🎮 New Game",          f"in:{iid}")],
+            [_b("🔥 REVENGE  ×2 Coins", f"ir:{iid}",   "danger", "fire")],
+            [_b("🔄 Rematch",           f"irem:{iid}", "primary", "refresh"),
+             _b("🎮 New Game",          f"in:{iid}", icon_key="game")],
         ])
     if mode in ("pvp", "xo"):
         return InlineKeyboardMarkup([[
-            _b("🎮 New Open Game", f"in:{iid}", "primary"),
+            _b("🎮 New Open Game", f"in:{iid}", "primary", "game"),
         ]])
     return InlineKeyboardMarkup([[
-        _b("🔄 Rematch",  f"irem:{iid}", "primary"),
-        _b("🎮 New Game", f"in:{iid}"),
+        _b("🔄 Rematch",  f"irem:{iid}", "primary", "refresh"),
+        _b("🎮 New Game", f"in:{iid}", icon_key="game"),
     ]])
 
 
@@ -127,12 +134,12 @@ def _header(game):
     if game["mode"] in ("pvp", "xo"):
         xn = e(game["names"].get(game["x_player"], "Player 1"))
         on = e(game["names"].get(game["o_player"], "Player 2"))
-        return f"❌ <b>{xn}</b>  ⚔️  ⭕ <b>{on}</b>"
+        return f"{em('x_mark')} <b>{xn}</b>  {em('swords')}  {em('o_mark')} <b>{on}</b>"
     xn    = e(game["names"].get(game["x_player"], "You"))
     char  = CHARACTERS.get(game.get("character", DEFAULT_CHARACTER), {})
     cname = e(char.get("name", "🤖 Bot"))
     diff  = e(game.get("difficulty", "hard").capitalize())
-    return f"❌ <b>{xn}</b>  ⚔️  {cname} <b>[{diff}]</b>"
+    return f"{em('x_mark')} <b>{xn}</b>  {em('swords')}  {cname}\n{em('star')} <i>{diff} Mode</i>"
 
 def _tmark(game, uid):
     return "❌" if game["players"].get(uid) == X else "⭕"
@@ -536,21 +543,18 @@ async def _end(bot, iid: str, game: dict, winner_val):
     board_emoji = board_to_emoji(board)
 
     winner_id = loser_id = winner_name = None
-    result_text = personality_html = ""
+    result_text = ""
 
     if winner_val:
         winner_id   = game["x_player"] if winner_val == X else game["o_player"]
         loser_id    = game["o_player"] if winner_val == X else game["x_player"]
         winner_name = game["names"].get(winner_id, "🤖 Bot")
-        result_text = f"🏆 <b>{e(winner_name)}</b> wins! {CELL_EMOJI[winner_val]}"
-        if mode == "pve":
-            raw = char_result_msg(character, "win" if winner_id == "bot" else "lose")
-            personality_html = raw
+        result_text = (
+            f"<blockquote>{em('trophy')} <b>{e(winner_name)} wins!</b> "
+            f"{CELL_EMOJI[winner_val]}</blockquote>"
+        )
     else:
-        result_text = "🤝 <b>It's a Draw!</b>"
-        if mode == "pve":
-            raw = char_result_msg(character, "draw")
-            personality_html = raw
+        result_text = f"<blockquote>{em('handshake')} <b>It's a Draw!</b></blockquote>"
 
     x_id   = game["x_player"]
     o_id   = game["o_player"]
@@ -572,8 +576,8 @@ async def _end(bot, iid: str, game: dict, winner_val):
             return
         sign = "+" if delta["elo_delta"] >= 0 else ""
         elo_lines.append(
-            f"📈 <b>{e(name)}</b> ELO: {delta['old_elo']} → "
-            f"{delta['new_elo']} ({sign}{delta['elo_delta']})"
+            f"{em('chart_up')} <b>{e(name)}</b>  {delta['old_elo']} → "
+            f"<b>{delta['new_elo']}</b> <i>({sign}{delta['elo_delta']})</i>"
         )
 
     if winner_val:
@@ -595,29 +599,21 @@ async def _end(bot, iid: str, game: dict, winner_val):
     coins_html = ""
     if is_rev and winner_id and winner_id != "bot":
         coins_html = (
-            f"\n💰 <b>{e(winner_name)}</b> earned "
-            f"<b>+{COINS_WIN * 2} coins!</b> (×2 Revenge!)"
+            f"\n{em('coins')} <b>{e(winner_name)}</b> earned "
+            f"<b>+{COINS_WIN * 2} coins</b> (×2 Revenge!)"
         )
         from database import add_coins as _ac
         await _ac(winner_id, COINS_WIN)
     elif winner_id and winner_id != "bot":
-        coins_html = f"\n💰 <b>{e(winner_name)}</b> earned <b>+{COINS_WIN} coins!</b>"
+        coins_html = f"\n{em('coins')} <b>{e(winner_name)}</b> earned <b>+{COINS_WIN} coins</b>"
     elif not winner_val:
-        coins_html = f"\n💰 Both players earned <b>+{COINS_DRAW} coins!</b>"
-
-    analysis_html = ""
-    raw_a = analyse_game(game.get("move_history", []))
-    if raw_a:
-        analysis_html = f"\n\n{raw_a}"
+        coins_html = f"\n{em('coins')} Both players earned <b>+{COINS_DRAW} coins</b>"
 
     extras = ""
-    if elo_lines:        extras += "\n\n" + "\n".join(elo_lines)
+    if elo_lines:        extras += "\n" + "\n".join(elo_lines)
     if coins_html:       extras += coins_html
-    if personality_html: extras += personality_html
-    if analysis_html:    extras += analysis_html
 
-    sep   = "\n\n" + "─" * 14 if extras else ""
-    final = f"{header}\n\n{result_text}\n\n{board_emoji}{sep}\n\n{extras.strip()}"
+    final = f"{header}\n\n{board_emoji}\n\n{result_text}\n{extras}"
 
     show_revenge = (
         mode == "pve"

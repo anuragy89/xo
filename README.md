@@ -53,7 +53,11 @@ Each character has unique personality dialogue for wins, losses, draws, and thin
 - **Global Leaderboard** — Top 10 players by ELO (`/top`)
 - **Group Leaderboard** — Per-group win rankings (`/grouptop`)
 - **Head-to-Head** — Records between any two players (`/h2h @user`)
-- **Post-Game Analysis** — AI-powered turning point detection after each game
+### ✨ Custom Emoji
+- **Premium Emoji Support** — Animated Telegram premium emoji throughout the bot (board, headers, stats, characters)
+- **Toggle On/Off** — `USE_CUSTOM_EMOJI` env var (default: enabled)
+- **Graceful Fallback** — Falls back to standard Unicode emoji when disabled or ID missing
+- **Blockquote Results** — End-game results displayed in highlighted blockquote boxes
 
 ### 🌐 Internationalization
 Fully translated into 3 languages:
@@ -179,6 +183,7 @@ Fully translated into 3 languages:
 | `UPDATE_CHANNEL` | ❌ | Your updates channel with `@` (default: `@YourChannel`) |
 | `SUPPORT_USERNAME` | ❌ | Support username without `@` |
 | `BOT_THINK_DELAY` | ❌ | Bot "thinking" pause in seconds (default: `0.8`) |
+| `USE_CUSTOM_EMOJI` | ❌ | Enable premium emoji in messages (default: `1`). Set `0` to use Unicode fallbacks |
 
 ### BotFather Setup (Required for Inline Mode)
 1. `/setinline` → select your bot → set a placeholder (e.g. `Play XO`)
@@ -192,7 +197,8 @@ Fully translated into 3 languages:
 ```
 ├── main.py                  # Entry point — webhook/polling, handler registration, scheduled jobs
 ├── config.py                # Environment variables & constants
-├── game.py                  # Core game logic — board, Minimax AI, characters, post-game analysis
+├── emojis.py                # Custom/premium emoji configuration & helpers (em, btn_emoji, get_cell_emoji)
+├── game.py                  # Core game logic — board, Minimax AI, bot characters
 ├── database.py              # MongoDB operations (Motor async) — users, groups, tournaments, H2H, ELO
 ├── state.py                 # Redis-backed shared state — games, lobbies, bets, locks
 ├── i18n.py                  # Internationalization — EN/AR/HI translations

@@ -26,7 +26,7 @@ from telegram.constants import ParseMode
 from game import (
     new_pvp_game, new_pve_game,
     check_winner, is_draw, bot_move, board_to_emoji,
-    char_thinking, char_result_msg, analyse_game,
+    char_thinking,
     EMPTY, CELL_EMOJI, X, O, CHARACTERS, DEFAULT_CHARACTER,
 )
 from keyboards import (
@@ -38,6 +38,7 @@ from database import (
     update_group_stats, update_h2h, STARTING_ELO, COINS_WIN, COINS_DRAW,
 )
 from i18n import t
+from emojis import em
 from config import BOT_THINK_DELAY
 import state
 
@@ -78,12 +79,12 @@ def game_header(game: dict) -> str:
     if game["mode"] in ("pvp", "xo"):
         xn = b(game["names"].get(game["x_player"], "Player 1"))
         on = b(game["names"].get(game["o_player"], "Player 2"))
-        return f"❌ {xn}  ⚔️  ⭕ {on}"
+        return f"{em('x_mark')} {xn}  {em('swords')}  {em('o_mark')} {on}"
     xn    = b(game["names"].get(game["x_player"], "You"))
     char  = CHARACTERS.get(game.get("character", DEFAULT_CHARACTER), {})
     cname = e(char.get("name", "🤖 Bot"))
     diff  = e(game.get("difficulty", "hard").capitalize())
-    return f"❌ {xn}  ⚔️  {cname} <b>[{diff}]</b>"
+    return f"{em('x_mark')} {xn}  {em('swords')}  {cname}\n{em('star')} <i>{diff} Mode</i>"
 
 def turn_mark(game: dict, uid) -> str:
     return "❌" if game["players"].get(uid) == X else "⭕"
@@ -678,23 +679,18 @@ async def _end_game(query, bot: Bot, game: dict, chat_id: int, winner_val, ctx):
     header      = game_header(game)
 
     winner_id = loser_id = winner_name = None
-    result_text = personality = ""
+    result_text = ""
 
     if winner_val:
         winner_id   = game["x_player"] if winner_val == X else game["o_player"]
         loser_id    = game["o_player"] if winner_val == X else game["x_player"]
         winner_name = game["names"].get(winner_id, "🤖 Bot")
         result_text = (
-            f"🏆 <b>{e(winner_name)}</b> wins! {CELL_EMOJI[winner_val]}"
+            f"<blockquote>{em('trophy')} <b>{e(winner_name)} wins!</b> "
+            f"{CELL_EMOJI[winner_val]}</blockquote>"
         )
-        if mode == "pve":
-            msg = char_result_msg(character, "win" if winner_id == "bot" else "lose")
-            personality = msg
     else:
-        result_text = "🤝 <b>It's a Draw!</b>"
-        if mode == "pve":
-            msg = char_result_msg(character, "draw")
-            personality = msg
+        result_text = f"<blockquote>{em('handshake')} <b>It's a Draw!</b></blockquote>"
 
     x_id   = game["x_player"]
     o_id   = game["o_player"]
@@ -718,14 +714,14 @@ async def _end_game(query, bot: Bot, game: dict, chat_id: int, winner_val, ctx):
             return
         sign = "+" if delta["elo_delta"] >= 0 else ""
         elo_lines.append(
-            f"📈 <b>{e(name)}</b> ELO: {delta['old_elo']} → "
-            f"{delta['new_elo']} ({sign}{delta['elo_delta']})"
+            f"{em('chart_up')} <b>{e(name)}</b>  {delta['old_elo']} → "
+            f"<b>{delta['new_elo']}</b> <i>({sign}{delta['elo_delta']})</i>"
         )
         s, p = delta["streak"], delta["prev_streak"]
         if result == "win" and s in (3, 5, 10, 20) and s > p:
-            streak_lines.append(f"🔥 <b>{e(name)}</b> is on a <b>{s}-win streak!</b>")
+            streak_lines.append(f"{em('streak')} <b>{e(name)}</b> — <b>{s}-win streak!</b>")
         elif result != "win" and p >= 3:
-            streak_lines.append(f"💔 <b>{e(name)}</b>'s {p}-win streak is over!")
+            streak_lines.append(f"{em('broken_heart')} <b>{e(name)}</b>'s {p}-win streak is over!")
         if grp_id and result == "win":
             g_wins = await update_group_stats(grp_id, uid, result, name)
             if g_wins in MILESTONES:
@@ -757,31 +753,25 @@ async def _end_game(query, bot: Bot, game: dict, chat_id: int, winner_val, ctx):
     coins_line = ""
     if is_rev and winner_id and winner_id != "bot":
         coins_line = (
-            f"\n💰 <b>{e(winner_name)}</b> earned "
-            f"<b>+{COINS_WIN * 2} coins!</b> (×2 Revenge!)"
+            f"\n{em('coins')} <b>{e(winner_name)}</b> earned "
+            f"<b>+{COINS_WIN * 2} coins</b> (×2 Revenge!)"
         )
         from database import add_coins as _ac
         await _ac(winner_id, COINS_WIN)
     elif winner_id and winner_id != "bot":
         coins_line = (
-            f"\n💰 <b>{e(winner_name)}</b> earned <b>+{COINS_WIN} coins!</b>"
+            f"\n{em('coins')} <b>{e(winner_name)}</b> earned <b>+{COINS_WIN} coins</b>"
         )
     elif not winner_val:
-        coins_line = f"\n💰 Both players earned <b>+{COINS_DRAW} coins!</b>"
+        coins_line = f"\n{em('coins')} Both players earned <b>+{COINS_DRAW} coins</b>"
 
-    analysis_raw = analyse_game(game.get("move_history", []))
-    analysis     = f"\n\n{analysis_raw}" if analysis_raw else ""
-
-    sep    = "\n\n" + "─" * 16 if (elo_lines or coins_line or personality or analysis) else ""
     extras = ""
     if elo_lines:    extras += "\n" + "\n".join(elo_lines)
     if coins_line:   extras += coins_line
     if bet_line:     extras += bet_line
     if streak_lines: extras += "\n" + "\n".join(streak_lines)
-    if personality:  extras += personality
-    if analysis:     extras += analysis
 
-    final = f"{header}\n\n{result_text}\n\n{board_emoji}{sep}{extras}"
+    final = f"{header}\n\n{board_emoji}\n\n{result_text}\n{extras}"
 
     if is_tourn:
         kb = None

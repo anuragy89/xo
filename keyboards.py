@@ -5,20 +5,33 @@ keyboards.py — All InlineKeyboardMarkup builders.
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from config import UPDATE_CHANNEL, BOT_USERNAME, SUPPORT_USERNAME
 from game import EMPTY, CELL_EMOJI
+from emojis import em, btn_emoji
 
 
-def _b(text, data, style=""):
+def _b(text, data, style="", icon_key=""):
+    kw = {}
     if style:
+        kw["style"] = style
+    icon_id = btn_emoji(icon_key) if icon_key else None
+    if icon_id:
+        kw["icon_custom_emoji_id"] = icon_id
+    if kw:
         return InlineKeyboardButton(
-            text, callback_data=data, api_kwargs={"style": style}
+            text, callback_data=data, api_kwargs=kw
         )
     return InlineKeyboardButton(text, callback_data=data)
 
 
-def _u(text, url, style=""):
+def _u(text, url, style="", icon_key=""):
+    kw = {}
     if style:
+        kw["style"] = style
+    icon_id = btn_emoji(icon_key) if icon_key else None
+    if icon_id:
+        kw["icon_custom_emoji_id"] = icon_id
+    if kw:
         return InlineKeyboardButton(
-            text, url=url, api_kwargs={"style": style}
+            text, url=url, api_kwargs=kw
         )
     return InlineKeyboardButton(text, url=url)
 
@@ -50,12 +63,12 @@ def main_menu_kb():
 def group_welcome_kb():
     return InlineKeyboardMarkup([
         [
-            _b("⚔️ PvP Game", "cb_mode_pvp", "primary"),
-            _b("🤖 vs Bot", "cb_mode_pve", "primary"),
+            _b("⚔️ PvP Game", "cb_mode_pvp", "primary", "swords"),
+            _b("🤖 vs Bot", "cb_mode_pve", "primary", "robot"),
         ],
         [
-            _b("🏆 Tournament", "cb_mode_tournament", "primary"),
-            _b("📅 Daily Puzzle", "cb_mode_daily", "primary"),
+            _b("🏆 Tournament", "cb_mode_tournament", "primary", "trophy"),
+            _b("📅 Daily Puzzle", "cb_mode_daily", "primary", "calendar"),
         ],
         [
             _b("My Stats", "cb_stats", "primary"),
@@ -94,7 +107,7 @@ def board_kb(board, chat_id):
 
 def xo_lobby_kb(chat_id, creator_id):
     return InlineKeyboardMarkup([
-        [_b("⚡ Join Game", f"xo_join:{chat_id}:{creator_id}", "success")],
+        [_b("⚡ Join Game", f"xo_join:{chat_id}:{creator_id}", "success", "lightning")],
         [_b("Cancel", f"xo_cancel:{chat_id}:{creator_id}", "danger")],
     ])
 
@@ -123,9 +136,9 @@ def difficulty_kb(user_id: int):
 def character_kb(difficulty, user_id: int):
     return InlineKeyboardMarkup([
         [
-            _b("😈 The Devil", f"char:{user_id}:{difficulty}:devil"),
-            _b("🤓 The Nerd", f"char:{user_id}:{difficulty}:nerd"),
-            _b("😴 Grandma", f"char:{user_id}:{difficulty}:grandma"),
+            _b(f"{em('devil')} The Devil", f"char:{user_id}:{difficulty}:devil", icon_key="devil"),
+            _b(f"{em('nerd')} The Nerd", f"char:{user_id}:{difficulty}:nerd", icon_key="nerd"),
+            _b(f"{em('grandma')} Grandma", f"char:{user_id}:{difficulty}:grandma", icon_key="grandma"),
         ],
         [_b("Back", f"pick_diff:{user_id}")],
     ])
@@ -135,7 +148,7 @@ def character_kb(difficulty, user_id: int):
 
 def rematch_kb(mode):
     return InlineKeyboardMarkup([[
-        _b("🔄 Rematch", f"rematch:{mode}", "primary"),
+        _b("🔄 Rematch", f"rematch:{mode}", "primary", "refresh"),
         _b("Main Menu", "cb_main_menu"),
     ]])
 
@@ -144,7 +157,7 @@ def rematch_kb(mode):
 
 def pvp_rematch_kb():
     return InlineKeyboardMarkup([[
-        _b("🎮 New /xo Game", "xo_new", "primary"),
+        _b("🎮 New /xo Game", "xo_new", "primary", "game"),
         _b("Main Menu", "cb_main_menu"),
     ]])
 
@@ -153,9 +166,9 @@ def pvp_rematch_kb():
 
 def revenge_kb():
     return InlineKeyboardMarkup([
-        [_b("🔥 REVENGE  ×2 Coins", "revenge", "danger")],
+        [_b("🔥 REVENGE  ×2 Coins", "revenge", "danger", "fire")],
         [
-            _b("🔄 Rematch", "rematch:pve", "primary"),
+            _b("🔄 Rematch", "rematch:pve", "primary", "refresh"),
             _b("Main Menu", "cb_main_menu"),
         ],
     ])
