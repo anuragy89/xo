@@ -151,3 +151,12 @@ def get_cell_emoji() -> dict:
         1:  em("x_mark"),
         -1: em("o_mark"),
     }
+
+
+def get_cell_emoji_plain() -> dict:
+    """Return {0: empty, 1: X, -1: O} with Unicode fallbacks only (for button text)."""
+    return {
+        0:  EMOJIS["empty_cell"][1],
+        1:  EMOJIS["x_mark"][1],
+        -1: EMOJIS["o_mark"][1],
+    }

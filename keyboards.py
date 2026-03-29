@@ -5,7 +5,9 @@ keyboards.py — All InlineKeyboardMarkup builders.
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from config import UPDATE_CHANNEL, BOT_USERNAME, SUPPORT_USERNAME
 from game import EMPTY, CELL_EMOJI
-from emojis import btn_emoji
+from emojis import btn_emoji, get_cell_emoji_plain
+
+BTN_CELL = get_cell_emoji_plain()
 
 
 def _b(text, data, style="", icon_key=""):
@@ -96,7 +98,7 @@ def board_kb(board, chat_id):
             else:
                 row.append(
                     InlineKeyboardButton(
-                        CELL_EMOJI[cell], callback_data="noop"
+                        BTN_CELL[cell], callback_data="noop"
                     )
                 )
         rows.append(row)
@@ -231,7 +233,7 @@ def daily_board_kb(board, chat_id, puzzle_idx):
             else:
                 row.append(
                     InlineKeyboardButton(
-                        CELL_EMOJI[cell], callback_data="noop"
+                        BTN_CELL[cell], callback_data="noop"
                     )
                 )
         rows.append(row)

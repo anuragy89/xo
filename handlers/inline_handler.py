@@ -48,10 +48,12 @@ from database import (
     update_h2h, STARTING_ELO, COINS_WIN, COINS_DRAW,
 )
 from config import BOT_THINK_DELAY
-from emojis import em, btn_emoji
+from emojis import em, btn_emoji, get_cell_emoji_plain
 import state
 
 logger = logging.getLogger(__name__)
+
+_BTN_CELL = get_cell_emoji_plain()
 
 
 # ─────────────────────────────────────────────────────────
@@ -104,7 +106,7 @@ def _board_kb(board, iid):
                 ))
             else:
                 row.append(InlineKeyboardButton(
-                    CELL_EMOJI[cell], callback_data="noop"
+                    _BTN_CELL[cell], callback_data="noop"
                 ))
         rows.append(row)
     return InlineKeyboardMarkup(rows)
