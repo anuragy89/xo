@@ -39,9 +39,6 @@ from handlers.tournament_handler import (
 from handlers.daily_handler import cmd_daily, handle_daily_callback
 from handlers.coins_handler import cmd_coins, cmd_bet
 from handlers.admin_handler import cmd_broadcast, cmd_admin_stats
-from handlers.wordsearch_handler import (
-    cmd_wordsearch, cmd_endws, cmd_hint, handle_ws_guess,
-)
 
 from database import ensure_indexes
 
@@ -84,11 +81,6 @@ def main():
     app.add_handler(CommandHandler("daily",      cmd_daily))
     app.add_handler(CommandHandler("coins",      cmd_coins))
     app.add_handler(CommandHandler("bet",        cmd_bet))
-
-    app.add_handler(CommandHandler("wordsearch", cmd_wordsearch))
-    app.add_handler(CommandHandler("ws",         cmd_wordsearch))
-    app.add_handler(CommandHandler("endws",      cmd_endws))
-    app.add_handler(CommandHandler("hint",       cmd_hint))
 
     app.add_handler(CommandHandler("broadcast",  cmd_broadcast))
     app.add_handler(CommandHandler("adminstats", cmd_admin_stats))
@@ -140,11 +132,7 @@ def main():
         filters.StatusUpdate.NEW_CHAT_MEMBERS,
         on_bot_added,
     ))
-    # ── Word Search guess handler (text messages in groups) ──
-    app.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUPS,
-        handle_ws_guess,
-    ))
+
     # ── Run ──────────────────────────────────────
     if USE_WEBHOOK:
         logger.info(f"Starting webhook on port {PORT}...")

@@ -1,9 +1,5 @@
 FROM python:3.13-slim
 
-# Install fonts for Pillow image rendering + uv
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
-
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
