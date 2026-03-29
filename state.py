@@ -315,3 +315,28 @@ def game_lock(chat_id, timeout: int = 10):
 def inline_lock(iid: str, timeout: int = 10):
     """Returns an async Redis lock for an inline game."""
     return r().lock(f"lock:igame:{iid}", timeout=timeout, blocking_timeout=5)
+
+
+# ─────────────────────────────────────────────────────────
+#  WORD SEARCH
+# ─────────────────────────────────────────────────────────
+
+async def get_ws(chat_id) -> dict | None:
+    raw = await r().get(f"ws:{chat_id}")
+    return json.loads(raw) if raw else None
+
+
+async def set_ws(chat_id, data: dict, ttl: int = 600) -> None:
+    await r().set(f"ws:{chat_id}", json.dumps(data), ex=ttl)
+
+
+async def delete_ws(chat_id) -> None:
+    await r().delete(f"ws:{chat_id}")
+
+
+async def ws_exists(chat_id) -> bool:
+    return bool(await r().exists(f"ws:{chat_id}"))
+
+
+def ws_lock(chat_id, timeout: int = 10):
+    return r().lock(f"lock:ws:{chat_id}", timeout=timeout, blocking_timeout=5)

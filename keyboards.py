@@ -50,7 +50,7 @@ def main_menu_kb():
 def group_welcome_kb():
     return InlineKeyboardMarkup([
         [
-            _b("⚔️ PvP Game", "cb_mode_pvp", "success"),
+            _b("⚔️ PvP Game", "cb_mode_pvp", "primary"),
             _b("🤖 vs Bot", "cb_mode_pve", "primary"),
         ],
         [
