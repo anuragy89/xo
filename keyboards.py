@@ -5,7 +5,7 @@ keyboards.py — All InlineKeyboardMarkup builders.
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from config import UPDATE_CHANNEL, BOT_USERNAME, SUPPORT_USERNAME
 from game import EMPTY, CELL_EMOJI
-from emojis import em, btn_emoji
+from emojis import btn_emoji
 
 
 def _b(text, data, style="", icon_key=""):
@@ -136,9 +136,9 @@ def difficulty_kb(user_id: int):
 def character_kb(difficulty, user_id: int):
     return InlineKeyboardMarkup([
         [
-            _b(f"{em('devil')} The Devil", f"char:{user_id}:{difficulty}:devil", icon_key="devil"),
-            _b(f"{em('nerd')} The Nerd", f"char:{user_id}:{difficulty}:nerd", icon_key="nerd"),
-            _b(f"{em('grandma')} Grandma", f"char:{user_id}:{difficulty}:grandma", icon_key="grandma"),
+            _b("😈 The Devil", f"char:{user_id}:{difficulty}:devil", icon_key="devil"),
+            _b("🤓 The Nerd", f"char:{user_id}:{difficulty}:nerd", icon_key="nerd"),
+            _b("😴 Grandma", f"char:{user_id}:{difficulty}:grandma", icon_key="grandma"),
         ],
         [_b("Back", f"pick_diff:{user_id}")],
     ])

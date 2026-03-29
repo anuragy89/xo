@@ -137,7 +137,7 @@ def _header(game):
         return f"{em('x_mark')} <b>{xn}</b>  {em('swords')}  {em('o_mark')} <b>{on}</b>"
     xn    = e(game["names"].get(game["x_player"], "You"))
     char  = CHARACTERS.get(game.get("character", DEFAULT_CHARACTER), {})
-    cname = e(char.get("name", "🤖 Bot"))
+    cname = char.get("name", "🤖 Bot")
     diff  = e(game.get("difficulty", "hard").capitalize())
     return f"{em('x_mark')} <b>{xn}</b>  {em('swords')}  {cname}\n{em('star')} <i>{diff} Mode</i>"
 
