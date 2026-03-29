@@ -110,24 +110,24 @@ def challenge_kb(challenger_id):
 
 # ── PvE: Difficulty ──────────────────────────────────────
 
-def difficulty_kb():
+def difficulty_kb(user_id: int):
     return InlineKeyboardMarkup([[
-        _b("Easy", "diff:easy", "success"),
-        _b("Medium", "diff:medium"),
-        _b("Hard", "diff:hard", "danger"),
+        _b("Easy", f"diff:{user_id}:easy", "success"),
+        _b("Medium", f"diff:{user_id}:medium"),
+        _b("Hard", f"diff:{user_id}:hard", "danger"),
     ]])
 
 
-# ── PvE: Character ───────────────────────────────────────
+# ── PvE: Character ─────────────────────────────────────────
 
-def character_kb(difficulty):
+def character_kb(difficulty, user_id: int):
     return InlineKeyboardMarkup([
         [
-            _b("😈 The Devil", f"char:{difficulty}:devil"),
-            _b("🤓 The Nerd", f"char:{difficulty}:nerd"),
-            _b("😴 Grandma", f"char:{difficulty}:grandma"),
+            _b("😈 The Devil", f"char:{user_id}:{difficulty}:devil"),
+            _b("🤓 The Nerd", f"char:{user_id}:{difficulty}:nerd"),
+            _b("😴 Grandma", f"char:{user_id}:{difficulty}:grandma"),
         ],
-        [_b("Back", "cb_pick_difficulty")],
+        [_b("Back", f"pick_diff:{user_id}")],
     ])
 
 

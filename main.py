@@ -6,6 +6,8 @@ Set USE_WEBHOOK=true in .env for production webhook mode.
 """
 
 import logging
+import random
+from datetime import time as dt_time, timezone, timedelta
 
 from telegram.ext import (
     Application,
@@ -38,9 +40,13 @@ from handlers.tournament_handler import (
 )
 from handlers.daily_handler import cmd_daily, handle_daily_callback
 from handlers.coins_handler import cmd_coins, cmd_bet
-from handlers.admin_handler import cmd_broadcast, cmd_admin_stats
+from handlers.admin_handler import cmd_broadcast, cmd_admin_stats, handle_broadcast_callback
 
-from database import ensure_indexes
+from database import (
+    ensure_indexes, get_leaderboard, get_global_daily_stats,
+    get_all_group_ids, get_group_leaderboard,
+)
+import state
 
 # ── Logging ───────────────────────────────────────────────
 logging.basicConfig(
@@ -50,10 +56,164 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ── Post-init: DB indexes ────────────────────────────────
+# ── Daily Stats + Group Rankings Broadcast ────────────────
+async def _daily_stats_broadcast(ctx):
+    """Sends daily stats + per-group rankings at 1:30 UTC.
+    Uses a Redis lock so only one dyno sends the broadcast."""
+    lock = state.r().lock("lock:daily_broadcast", timeout=300, blocking_timeout=0)
+    acquired = await lock.acquire(blocking=False)
+    if not acquired:
+        logger.info("Daily broadcast: another dyno is handling it.")
+        return
+
+    try:
+        logger.info("Daily broadcast: starting...")
+        stats  = await get_global_daily_stats()
+        board  = await get_leaderboard(5)
+        groups = await get_all_group_ids()
+
+        total_games = stats["total_games"]
+        total_users = stats["total_users"]
+
+        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+        lb_lines = []
+        for idx, d in enumerate(board):
+            from html import escape
+            name = escape(d.get("full_name") or d.get("username") or "Unknown")
+            elo  = d.get("elo", 1500)
+            wins = d.get("wins", 0)
+            lb_lines.append(f"{medals[idx]} <b>{name}</b> — ELO {elo} ({wins}W)")
+
+        lb_text = "\n".join(lb_lines) if lb_lines else "No players yet!"
+
+        global_text = (
+            "📊 <b>Daily Stats Update</b>\n\n"
+            f"👥 Total Players: <b>{total_users}</b>\n"
+            f"🎮 Total Games: <b>{total_games}</b>\n\n"
+            "🏆 <b>Global Top 5</b>\n"
+            f"{lb_text}\n\n"
+            "📅 Don't forget today's /daily puzzle!\n"
+            "⚔️ Start a game: /xo or /pve"
+        )
+
+        sent = 0
+        for gid in groups:
+            try:
+                # Per-group ranking
+                grp_board = await get_group_leaderboard(gid, 5)
+                if grp_board:
+                    grp_lines = []
+                    for j, gd in enumerate(grp_board):
+                        from html import escape as _esc
+                        gname = _esc(gd.get("user_name") or "Unknown")
+                        gw = gd.get("wins", 0)
+                        gl = gd.get("losses", 0)
+                        grp_lines.append(f"{medals[j]} <b>{gname}</b> — {gw}W / {gl}L")
+                    grp_text = "\n".join(grp_lines)
+                    full_text = (
+                        f"{global_text}\n\n"
+                        "─" * 14 + "\n"
+                        "🏅 <b>This Group's Top Players</b>\n"
+                        f"{grp_text}"
+                    )
+                else:
+                    full_text = global_text
+
+                await ctx.bot.send_message(gid, full_text, parse_mode="HTML")
+                sent += 1
+            except Exception:
+                pass
+        logger.info(f"Daily broadcast: sent to {sent}/{len(groups)} groups.")
+    finally:
+        try:
+            await lock.release()
+        except Exception:
+            pass
+
+
+# ── Idle Game Reminder ────────────────────────────────────
+# IST = UTC+5:30.  10 PM IST = 16:30 UTC,  6 AM IST = 00:30 UTC
+# So "awake hours" in UTC: 00:30 – 16:30
+# Runs every hour; checks Redis key for last game activity.
+
+_NUDGE_MESSAGES = [
+    "🎮 It's been a while! Who's up for a quick XO match?\n\n/xo — Play with friends\n/pve — Challenge the bot",
+    "⚡ The board is gathering dust! Time to make a move.\n\n/xo to start a PvP game\n/pve to play vs Bot",
+    "🤖 The bot is bored and wants to play! Challenge it with /pve\nOr play with friends: /xo",
+    "❌⭕ Missing some XO action? Jump in!\n\n/xo — Open game, anyone can join\n/pve — Solo challenge",
+    "🔥 No games in a while! Let's change that.\n\n/xo for PvP\n/pve for a bot challenge\n/daily for today's puzzle",
+    "🏆 Your ELO is waiting to go up! Start a game now.\n\n/xo — PvP\n/pve — vs Bot\n/tournament — Bracket mode!",
+    "⬜⬜⬜\n⬜❓⬜\n⬜⬜⬜\n\nThis board needs some action! /xo or /pve",
+]
+
+
+async def _idle_game_reminder(ctx):
+    """Checks each group for inactivity. Sends nudge if idle 4-5h during IST daytime."""
+    lock = state.r().lock("lock:idle_reminder", timeout=120, blocking_timeout=0)
+    acquired = await lock.acquire(blocking=False)
+    if not acquired:
+        return
+
+    try:
+        from datetime import datetime, timezone as tz
+        now_utc = datetime.now(tz.utc)
+        # IST = UTC + 5:30
+        ist_hour = (now_utc.hour + 5 + (1 if now_utc.minute >= 30 else 0)) % 24
+        # Skip 10 PM to 6 AM IST (22, 23, 0, 1, 2, 3, 4, 5)
+        if ist_hour >= 22 or ist_hour < 6:
+            logger.info("Idle reminder: skipping (IST nighttime).")
+            return
+
+        groups = await get_all_group_ids()
+        import time
+        now = time.time()
+        sent = 0
+
+        for gid in groups:
+            try:
+                last_raw = await state.r().get(f"last_game:{gid}")
+                last_ts = float(last_raw) if last_raw else 0.0
+                hours_idle = (now - last_ts) / 3600.0
+
+                if hours_idle >= 4.0:
+                    msg = random.choice(_NUDGE_MESSAGES)
+                    await ctx.bot.send_message(gid, msg, parse_mode="HTML")
+                    # Reset timer so we don't spam
+                    await state.r().set(f"last_game:{gid}", str(now), ex=86400)
+                    sent += 1
+            except Exception:
+                pass
+
+        if sent:
+            logger.info(f"Idle reminder: nudged {sent} groups.")
+    finally:
+        try:
+            await lock.release()
+        except Exception:
+            pass
+
+
+# ── Post-init: DB indexes + scheduled jobs ───────────────
 async def post_init(application: Application) -> None:
     await ensure_indexes()
     logger.info("Database indexes ensured.")
+
+    # Schedule daily stats broadcast at 01:30 UTC (7:00 AM IST)
+    application.job_queue.run_daily(
+        _daily_stats_broadcast,
+        time=dt_time(hour=1, minute=30, tzinfo=timezone.utc),
+        name="daily_stats_broadcast",
+    )
+    logger.info("Scheduled daily stats broadcast at 01:30 UTC.")
+
+    # Schedule idle game reminder — runs every hour
+    application.job_queue.run_repeating(
+        _idle_game_reminder,
+        interval=timedelta(hours=1),
+        first=timedelta(minutes=5),
+        name="idle_game_reminder",
+    )
+    logger.info("Scheduled idle game reminder (hourly).")
 
 
 def main():
@@ -104,6 +264,12 @@ def main():
     app.add_handler(CallbackQueryHandler(
         handle_daily_callback,
         pattern=r"^daily:"
+    ))
+
+    # Broadcast callbacks (admin)
+    app.add_handler(CallbackQueryHandler(
+        handle_broadcast_callback,
+        pattern=r"^bc:"
     ))
 
     # Language callbacks

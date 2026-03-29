@@ -230,10 +230,9 @@ async def cmd_pve(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t("game_running", lang))
         return
 
-    ctx.chat_data["pve_starter_id"] = user.id
     await update.message.reply_text(
         f"🤖 <b>Player vs Bot</b>\n\n{e(user.full_name)}, choose difficulty:",
-        reply_markup=difficulty_kb(),
+        reply_markup=difficulty_kb(user.id),
         parse_mode=ParseMode.HTML,
     )
 
@@ -449,44 +448,45 @@ async def handle_game_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     # ── difficulty picker ────────────────────────
     if data.startswith("diff:"):
-        diff = data.split(":")[1]
-        starter_id = ctx.chat_data.get("pve_starter_id")
-        if starter_id and user.id != starter_id:
-            try: await query.answer(t("only_challenger", lang), show_alert=True)
+        parts = data.split(":")
+        starter_id = int(parts[1])
+        diff       = parts[2]
+        if user.id != starter_id:
+            try: await query.answer("Not your game setup!", show_alert=True)
             except TelegramError: pass
             return
         if await state.game_exists(chat_id):
             try: await query.answer(t("game_running", lang), show_alert=True)
             except TelegramError: pass
             return
-        ctx.chat_data["chosen_diff"]    = diff
-        ctx.chat_data["pve_starter_id"] = user.id
         await _safe_edit(
             query,
             f"🤖 <b>Choose your opponent!</b>\n\nDifficulty: <b>{e(diff.capitalize())}</b>",
-            reply_markup=character_kb(diff),
+            reply_markup=character_kb(diff, user.id),
         )
         return
 
     # ── back to difficulty ───────────────────────
-    if data == "cb_pick_difficulty":
-        starter_id = ctx.chat_data.get("pve_starter_id")
-        if starter_id and user.id != starter_id:
+    if data.startswith("pick_diff:"):
+        starter_id = int(data.split(":")[1])
+        if user.id != starter_id:
             try: await query.answer("Not your game setup!", show_alert=True)
             except TelegramError: pass
             return
         await _safe_edit(
             query,
             f"🤖 <b>Player vs Bot</b>\n\n{e(user.full_name)}, choose difficulty:",
-            reply_markup=difficulty_kb(),
+            reply_markup=difficulty_kb(user.id),
         )
         return
 
     # ── character selected → start PvE ──────────
     if data.startswith("char:"):
-        _, diff, character = data.split(":")
-        starter_id = ctx.chat_data.get("pve_starter_id")
-        if starter_id and user.id != starter_id:
+        parts = data.split(":")
+        starter_id = int(parts[1])
+        diff       = parts[2]
+        character  = parts[3]
+        if user.id != starter_id:
             try: await query.answer("Not your game setup!", show_alert=True)
             except TelegramError: pass
             return
@@ -497,8 +497,6 @@ async def handle_game_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await save_user(user)
         game = new_pve_game(user.id, user.full_name, diff, character)
         await state.set_game(chat_id, game)
-        ctx.chat_data.pop("pve_starter_id", None)
-        ctx.chat_data.pop("chosen_diff",    None)
         char_data = CHARACTERS.get(character, CHARACTERS[DEFAULT_CHARACTER])
         await _safe_edit(
             query,
@@ -671,6 +669,10 @@ async def _end_game(query, bot: Bot, game: dict, chat_id: int, winner_val, ctx):
 
     game["status"] = "over"
     await state.delete_game(chat_id)
+
+    # Track last game time for idle reminder
+    import time as _time
+    await state.r().set(f"last_game:{chat_id}", str(_time.time()), ex=86400)
 
     board_emoji = board_to_emoji(board)
     header      = game_header(game)

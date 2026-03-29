@@ -239,6 +239,26 @@ async def mark_daily_done(user_id: int) -> None:
     await add_coins(user_id, COINS_DAILY)
 
 
+async def get_global_daily_stats() -> dict:
+    """Aggregate total stats across all users for the daily broadcast."""
+    pipeline = [
+        {"$group": {
+            "_id": None,
+            "total_users": {"$sum": 1},
+            "total_wins":  {"$sum": "$wins"},
+            "total_losses": {"$sum": "$losses"},
+            "total_draws": {"$sum": "$draws"},
+        }},
+    ]
+    result = await users_col.aggregate(pipeline).to_list(1)
+    if not result:
+        return {"total_users": 0, "total_wins": 0, "total_losses": 0,
+                "total_draws": 0, "total_games": 0}
+    d = result[0]
+    d["total_games"] = d["total_wins"] + d["total_losses"] + d["total_draws"]
+    return d
+
+
 # ── Tournament ────────────────────────────────────────────
 
 async def create_tournament(chat_id: int, creator_id: int, size: int) -> dict:
@@ -318,7 +338,12 @@ async def get_h2h(user_a_id: int, user_b_id: int) -> dict | None:
 
 # ── Broadcast ─────────────────────────────────────────────
 
-async def get_all_recipients() -> list:
+async def get_all_recipients(target: str = "all") -> list:
+    """target: 'all' | 'groups' | 'users'"""
+    if target == "groups":
+        return await get_all_group_ids()
+    if target == "users":
+        return await get_all_user_ids()
     user_ids  = await get_all_user_ids()
     group_ids = await get_all_group_ids()
     return user_ids + group_ids
