@@ -25,7 +25,6 @@ Error fix:
 import asyncio
 import html
 import logging
-import re
 
 from telegram import (
     Update,
@@ -62,9 +61,6 @@ def e(s) -> str:
     """Escape for HTML parse mode."""
     return html.escape(str(s), quote=False)
 
-def strip_md(s: str) -> str:
-    """Remove markdown markers so text is safe for HTML mode."""
-    return re.sub(r"[*_`\[\]]", "", str(s))
 
 async def _lang(uid: int) -> str:
     doc = await get_user(uid)
@@ -134,7 +130,7 @@ def _header(game):
         return f"❌ <b>{xn}</b>  ⚔️  ⭕ <b>{on}</b>"
     xn    = e(game["names"].get(game["x_player"], "You"))
     char  = CHARACTERS.get(game.get("character", DEFAULT_CHARACTER), {})
-    cname = e(strip_md(char.get("name", "🤖 Bot")))
+    cname = e(char.get("name", "🤖 Bot"))
     diff  = e(game.get("difficulty", "hard").capitalize())
     return f"❌ <b>{xn}</b>  ⚔️  {cname} <b>[{diff}]</b>"
 
@@ -273,7 +269,7 @@ async def handle_chosen_inline_result(update: Update, ctx: ContextTypes.DEFAULT_
         await state.set_inline_game(iid, game)
 
         char_data  = CHARACTERS[char]
-        char_intro = e(strip_md(char_data["intro"]))
+        char_intro = char_data["intro"]
         await _edit(
             ctx.bot, iid,
             f"{_header(game)}\n\n"
@@ -387,7 +383,7 @@ async def handle_inline_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE
         await state.set_inline_game(iid, game)
 
         char_data  = CHARACTERS.get(char, CHARACTERS[DEFAULT_CHARACTER])
-        char_intro = e(strip_md(char_data["intro"]))
+        char_intro = char_data["intro"]
         await _edit(
             bot, iid,
             f"{_header(game)}\n\n"
@@ -491,7 +487,7 @@ async def _do_move(bot, iid: str, idx: int, user):
         char         = game.get("character", DEFAULT_CHARACTER)
         game["turn"] = "bot"
         await state.set_inline_game(iid, game)
-        think        = e(strip_md(char_thinking(char)))
+        think        = char_thinking(char)
         await _edit(
             bot, iid,
             f"{_header(game)}\n\n"
@@ -549,12 +545,12 @@ async def _end(bot, iid: str, game: dict, winner_val):
         result_text = f"🏆 <b>{e(winner_name)}</b> wins! {CELL_EMOJI[winner_val]}"
         if mode == "pve":
             raw = char_result_msg(character, "win" if winner_id == "bot" else "lose")
-            personality_html = f"\n\n<i>{e(strip_md(raw.strip()))}</i>"
+            personality_html = raw
     else:
         result_text = "🤝 <b>It's a Draw!</b>"
         if mode == "pve":
             raw = char_result_msg(character, "draw")
-            personality_html = f"\n\n<i>{e(strip_md(raw.strip()))}</i>"
+            personality_html = raw
 
     x_id   = game["x_player"]
     o_id   = game["o_player"]
@@ -612,7 +608,7 @@ async def _end(bot, iid: str, game: dict, winner_val):
     analysis_html = ""
     raw_a = analyse_game(game.get("move_history", []))
     if raw_a:
-        analysis_html = f"\n\n{e(strip_md(raw_a))}"
+        analysis_html = f"\n\n{raw_a}"
 
     extras = ""
     if elo_lines:        extras += "\n\n" + "\n".join(elo_lines)

@@ -24,7 +24,7 @@ CELL_EMOJI = {EMPTY: "⬜", X: "❌", O: "⭕"}
 CHARACTERS = {
     "devil": {
         "name":  "😈 The Devil",
-        "intro": "😈 *The Devil* has entered the game.\n_\"Your soul is mine.\"_",
+        "intro": "😈 <b>The Devil</b> has entered the game.\n<i>\"Your soul is mine.\"</i>",
         "win":   [
             "😈 Did you really think you could beat ME?",
             "🔥 Burned. Absolutely burned.",
@@ -42,14 +42,14 @@ CHARACTERS = {
             "🔥 A temporary mercy. Next time — no.",
         ],
         "think": [
-            "😈 *Consulting the dark arts...*",
-            "🔥 *Summoning forbidden strategies...*",
-            "💀 *Calculating your demise...*",
+            "😈 <b>Consulting the dark arts...</b>",
+            "🔥 <b>Summoning forbidden strategies...</b>",
+            "💀 <b>Calculating your demise...</b>",
         ],
     },
     "nerd": {
         "name":  "🤓 The Nerd",
-        "intro": "🤓 *The Nerd* is ready.\n_\"Statistically, I will win 94.7% of the time.\"_",
+        "intro": "🤓 <b>The Nerd</b> is ready.\n<i>\"Statistically, I will win 94.7% of the time.\"</i>",
         "win":   [
             "🤓 Precisely as calculated. My model was 97.2% confident.",
             "📊 Center + corner opening: 68% win rate. Proven.",
@@ -66,14 +66,14 @@ CHARACTERS = {
             "📊 Expected outcome when both parties use minimax correctly.",
         ],
         "think": [
-            "🤓 *Cross-referencing 47,293 game databases...*",
-            "📊 *Running alpha-beta pruning depth 9...*",
-            "💻 *Evaluating 8 candidate moves...*",
+            "🤓 <b>Cross-referencing 47,293 game databases...</b>",
+            "📊 <b>Running alpha-beta pruning depth 9...</b>",
+            "💻 <b>Evaluating 8 candidate moves...</b>",
         ],
     },
     "grandma": {
         "name":  "😴 Grandma",
-        "intro": "😴 *Grandma* wants to play!\n_\"She's been practicing since 1987.\"_",
+        "intro": "😴 <b>Grandma</b> wants to play!\n<i>\"She's been practicing since 1987.\"</i>",
         "win":   [
             "😴 Oh my, I won! Would you like some cookies, dear?",
             "🍪 Grandma got you! Don't feel bad, sweetie.",
@@ -90,10 +90,10 @@ CHARACTERS = {
             "🌸 We're perfectly matched, dear.",
         ],
         "think": [
-            "😴 *Hmm... let me think, dear...*",
-            "🌸 *One moment, adjusting my glasses...*",
-            "😴 *Now where did I put my strategy...*",
-            "🍪 *Thinking while the cookies bake...*",
+            "😴 <b>Hmm... let me think, dear...</b>",
+            "🌸 <b>One moment, adjusting my glasses...</b>",
+            "😴 <b>Now where did I put my strategy...</b>",
+            "🍪 <b>Thinking while the cookies bake...</b>",
         ],
     },
 }
@@ -110,7 +110,7 @@ def char_result_msg(character: str, result: str) -> str:
     """result: 'win' (bot won) | 'lose' (bot lost) | 'draw'"""
     c = CHARACTERS.get(character, CHARACTERS[DEFAULT_CHARACTER])
     msgs = c.get(result, c["win"])
-    return "\n\n_" + random.choice(msgs) + "_"
+    return "\n\n<i>" + random.choice(msgs) + "</i>"
 
 
 # ─────────────────────────────────────────────────────────

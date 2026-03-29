@@ -501,7 +501,7 @@ async def handle_game_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await _safe_edit(
             query,
             f"{game_header(game)}\n\n"
-            f"{e(char_data['intro'])}\n\n"
+            f"{char_data['intro']}\n\n"
             f"<i>You are ❌ — make the first move!</i>\n\n"
             f"{board_to_emoji(game['board'])}\n\n"
             f"➡️ <b>Your turn!</b>",
@@ -535,7 +535,7 @@ async def handle_game_callbacks(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await _safe_edit(
             query,
             f"{game_header(game)}\n\n"
-            f"🔄 <b>Rematch!</b>\n{e(char_data['intro'])}\n\n"
+            f"🔄 <b>Rematch!</b>\n{char_data['intro']}\n\n"
             f"<i>You are ❌ — make the first move!</i>\n\n"
             f"{board_to_emoji(game['board'])}\n\n"
             f"➡️ <b>Your turn!</b>",
@@ -629,7 +629,7 @@ async def _handle_move(query, bot: Bot, cid: int, idx: int, user, lang: str, ctx
             query,
             f"{game_header(game)}\n\n"
             f"{board_to_emoji(board)}\n\n"
-            f"🤔 {e(char_thinking(character))}",
+            f"🤔 {char_thinking(character)}",
             reply_markup=board_kb(board, cid),
         )
 
@@ -689,12 +689,12 @@ async def _end_game(query, bot: Bot, game: dict, chat_id: int, winner_val, ctx):
         )
         if mode == "pve":
             msg = char_result_msg(character, "win" if winner_id == "bot" else "lose")
-            personality = f"\n\n<i>{e(msg)}</i>"
+            personality = msg
     else:
         result_text = "🤝 <b>It's a Draw!</b>"
         if mode == "pve":
             msg = char_result_msg(character, "draw")
-            personality = f"\n\n<i>{e(msg)}</i>"
+            personality = msg
 
     x_id   = game["x_player"]
     o_id   = game["o_player"]
