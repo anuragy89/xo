@@ -10,6 +10,7 @@
   <img src="https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb" alt="MongoDB">
   <img src="https://img.shields.io/badge/Redis-Async-red?logo=redis" alt="Redis">
   <img src="https://img.shields.io/badge/Deploy-Heroku%20%7C%20Docker-purple?logo=heroku" alt="Heroku/Docker">
+  <img src="https://img.shields.io/github/license/sparrow9616/xogame?color=blue" alt="MIT License">
 </p>
 
 ---
@@ -268,67 +269,6 @@ git push heroku main
 
 ## 📄 License
 
-**© 2026 [@sparrow9616](https://github.com/sparrow9616). All rights reserved.**
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
-This project and its source code are the exclusive property of [@sparrow9616](https://github.com/sparrow9616). No part of this codebase may be copied, modified, distributed, or used in any form without prior written permission from the owner.
-
-Unauthorized use, reproduction, or distribution of this software is strictly prohibited.
-uv run main.py
-```
-
-### Docker
-
-```bash
-# Build
-docker build -t xo-bot .
-
-# Run
-docker run --env-file .env xo-bot
-```
-
-### Heroku
-
-1. **Create app and add Redis:**
-   ```bash
-   heroku create your-app-name
-   heroku addons:create heroku-redis:mini
-   ```
-
-2. **Set environment variables:**
-   ```bash
-   heroku config:set BOT_TOKEN="your-token"
-   heroku config:set MONGO_URI="mongodb+srv://..."
-   heroku config:set BOT_USERNAME="your_bot_username"
-   heroku config:set WEBHOOK_URL="https://your-app-name.herokuapp.com"
-   heroku config:set OWNER_ID="your-telegram-id"
-   ```
-
-3. **Deploy:**
-   ```bash
-   # Via Docker (uses heroku.yml)
-   heroku stack:set container
-   git push heroku main
-
-   # Or via buildpack (uses Procfile + runtime.txt)
-   git push heroku main
-   ```
-
-The bot automatically switches between **webhook mode** (when `WEBHOOK_URL` is set) and **polling mode** (for local development).
-
----
-
-## 📦 Dependencies
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `python-telegram-bot[webhooks,job-queue]` | ≥22.7 | Telegram Bot API framework |
-| `motor` | ≥3.7.1 | Async MongoDB driver |
-| `pymongo` | ≥4.16.0 | MongoDB operations |
-| `redis` | ≥7.4.0 | Async Redis client |
-| `python-dotenv` | ≥1.2.2 | Environment variable loading |
-
----
-
-## 📄 License
-
-This project is open source. Feel free to fork and modify.
+**© 2026 [@sparrow9616](https://github.com/sparrow9616)**
