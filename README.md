@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/MongoDB-Atlas-green?logo=mongodb" alt="MongoDB">
   <img src="https://img.shields.io/badge/Redis-Async-red?logo=redis" alt="Redis">
   <img src="https://img.shields.io/badge/Deploy-Heroku%20%7C%20Docker-purple?logo=heroku" alt="Heroku/Docker">
-  <img src="https://img.shields.io/github/license/sparrow9616/xogame?color=blue" alt="MIT License">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
 </p>
 
 ---
