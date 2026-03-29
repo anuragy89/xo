@@ -678,15 +678,16 @@ async def _end_game(query, bot: Bot, game: dict, chat_id: int, winner_val, ctx):
     board_emoji = board_to_emoji(board)
     header      = game_header(game)
 
-    winner_id = loser_id = winner_name = None
+    winner_id = loser_id = winner_name = safe_winner = None
     result_text = ""
 
     if winner_val:
         winner_id   = game["x_player"] if winner_val == X else game["o_player"]
         loser_id    = game["o_player"] if winner_val == X else game["x_player"]
         winner_name = game["names"].get(winner_id, "🤖 Bot")
+        safe_winner = winner_name if winner_id == "bot" else e(winner_name)
         result_text = (
-            f"<blockquote>{em('trophy')} <b>{e(winner_name)} wins!</b> "
+            f"<blockquote>{em('trophy')} <b>{safe_winner} wins!</b> "
             f"{CELL_EMOJI[winner_val]}</blockquote>"
         )
     else:
@@ -753,14 +754,14 @@ async def _end_game(query, bot: Bot, game: dict, chat_id: int, winner_val, ctx):
     coins_line = ""
     if is_rev and winner_id and winner_id != "bot":
         coins_line = (
-            f"\n{em('coins')} <b>{e(winner_name)}</b> earned "
+            f"\n{em('coins')} <b>{safe_winner}</b> earned "
             f"<b>+{COINS_WIN * 2} coins</b> (×2 Revenge!)"
         )
         from database import add_coins as _ac
         await _ac(winner_id, COINS_WIN)
     elif winner_id and winner_id != "bot":
         coins_line = (
-            f"\n{em('coins')} <b>{e(winner_name)}</b> earned <b>+{COINS_WIN} coins</b>"
+            f"\n{em('coins')} <b>{safe_winner}</b> earned <b>+{COINS_WIN} coins</b>"
         )
     elif not winner_val:
         coins_line = f"\n{em('coins')} Both players earned <b>+{COINS_DRAW} coins</b>"
