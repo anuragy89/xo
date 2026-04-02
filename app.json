@@ -73,7 +73,7 @@
     }
   ],
   "addons": [],
-  "stack": "heroku-24",
+  "stack": "container",
   "scripts": {
     "postdeploy": "echo 'Bot deployed successfully on Standard-2x! Add bot to your group and send /xo to start playing.'"
   },
