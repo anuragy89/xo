@@ -60,11 +60,28 @@ logger = logging.getLogger(__name__)
 async def _daily_stats_broadcast(ctx):
     """Sends daily stats + per-group rankings at 1:30 UTC.
     Uses a Redis lock so only one dyno sends the broadcast."""
+    from html import escape
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
     lock = state.r().lock("lock:daily_broadcast", timeout=300, blocking_timeout=0)
     acquired = await lock.acquire(blocking=False)
     if not acquired:
         logger.info("Daily broadcast: another dyno is handling it.")
         return
+
+    # Inline buttons shown below every broadcast message
+    broadcast_kb = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🌐 Global Top", callback_data="cb_leaderboard"),
+            InlineKeyboardButton("📢 Updates", url=f"https://t.me/{UPDATE_CHANNEL.lstrip('@')}"),
+        ],
+        [
+            InlineKeyboardButton(
+                "➕ Add to Your Group",
+                url=f"https://t.me/{BOT_USERNAME}?startgroup=true",
+            ),
+        ],
+    ])
 
     try:
         logger.info("Daily broadcast: starting...")
@@ -76,53 +93,50 @@ async def _daily_stats_broadcast(ctx):
         total_users = stats["total_users"]
 
         medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+
+        # Compact global top-5
         lb_lines = []
         for idx, d in enumerate(board):
-            from html import escape
             name = escape(d.get("full_name") or d.get("username") or "Unknown")
             elo  = d.get("elo", 1500)
             wins = d.get("wins", 0)
-            lb_lines.append(f"{medals[idx]} <b>{name}</b> — ELO {elo} ({wins}W)")
+            lb_lines.append(f"{medals[idx]} <b>{name}</b>  <code>{elo} ELO</code>  {wins}W")
 
         lb_text = "\n".join(lb_lines) if lb_lines else "No players yet!"
-
-        global_text = (
-            "📊 <b>Daily Stats Update</b>\n\n"
-            f"👥 Total Players: <b>{total_users}</b>\n"
-            f"🎮 Total Games: <b>{total_games}</b>\n\n"
-            "🏆 <b>Global Top 5</b>\n"
-            f"{lb_text}\n\n"
-            "📅 Don't forget today's /daily puzzle!\n"
-            "⚔️ Start a game: /xo or /pve"
-        )
 
         sent = 0
         for gid in groups:
             try:
-                # Per-group ranking
-                grp_board = await get_group_leaderboard(gid, 5)
+                # Per-group top-3 only (keep message short)
+                grp_board = await get_group_leaderboard(gid, 3)
+                grp_block = ""
                 if grp_board:
                     grp_lines = []
                     for j, gd in enumerate(grp_board):
-                        from html import escape as _esc
-                        gname = _esc(gd.get("user_name") or "Unknown")
-                        gw = gd.get("wins", 0)
-                        gl = gd.get("losses", 0)
-                        grp_lines.append(f"{medals[j]} <b>{gname}</b> — {gw}W / {gl}L")
-                    grp_text = "\n".join(grp_lines)
-                    full_text = (
-                        f"{global_text}\n\n"
-                        "─" * 14 + "\n"
-                        "🏅 <b>This Group's Top Players</b>\n"
-                        f"{grp_text}"
-                    )
-                else:
-                    full_text = global_text
+                        gname = escape(gd.get("user_name") or "Unknown")
+                        gw    = gd.get("wins", 0)
+                        gl    = gd.get("losses", 0)
+                        grp_lines.append(f"{medals[j]} <b>{gname}</b>  {gw}W/{gl}L")
+                    grp_block = "\n\n🏅 <b>Group Top 3</b>\n" + "\n".join(grp_lines)
 
-                await ctx.bot.send_message(gid, full_text, parse_mode="HTML")
+                text = (
+                    "🎮 <b>Daily XO Update</b>\n"
+                    f"👥 {total_users:,} players · 🎯 {total_games:,} games\n\n"
+                    "🏆 <b>Global Top 5</b>\n"
+                    f"{lb_text}"
+                    f"{grp_block}\n\n"
+                    "📅 /daily  ·  ⚔️ /xo  ·  🤖 /pve"
+                )
+
+                await ctx.bot.send_message(
+                    gid, text,
+                    parse_mode="HTML",
+                    reply_markup=broadcast_kb,
+                )
                 sent += 1
             except Exception:
                 pass
+
         logger.info(f"Daily broadcast: sent to {sent}/{len(groups)} groups.")
     finally:
         try:
